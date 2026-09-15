@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+.next/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+npm-debug.log*
+
+# build output
+out/
+dist/
+
+# editor
+.DS_Store
+*.swp
+.vscode/
+
+# drizzle generated
+drizzle/

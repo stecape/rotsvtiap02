@@ -1,0 +1,19 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Installa dipendenze (layer cachato — rieseguito solo se package.json cambia)
+COPY package*.json ./
+RUN npm install
+
+# Il source code NON viene copiato qui: viene montato come volume in dev
+# Questo COPY serve solo se il container viene avviato senza volume mount
+COPY . .
+
+ENV NODE_ENV=development
+ENV WATCHPACK_POLLING=true
+
+EXPOSE 3000
+
+# --hostname 0.0.0.0 è necessario per essere raggiungibile dall'esterno del container
+CMD ["npm", "run", "dev"]
