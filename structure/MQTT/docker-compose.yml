@@ -1,0 +1,52 @@
+services:
+  # =============================================
+  # Mosquitto MQTT Broker
+  # =============================================
+  # Accessibile:
+  # - MQTT standard su porta 1883 (esposta direttamente)
+  # - MQTT WebSocket su wss://mqtt.rotsvtiap02 (via Traefik)
+  # - Da backend Docker via rete 'mqtt-network'
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    restart: unless-stopped
+    networks:
+      - backend       # Per backend Docker
+      - proxy         # Per WebSocket via Traefik
+    ports:
+      - "1883:1883"   # MQTT standard (TCP)
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-logs:/mosquitto/log
+    labels:
+      - "traefik.enable=true"
+      
+      # HTTP Router per WebSocket
+      - "traefik.http.routers.mqtt-ws.entrypoints=http"
+      - "traefik.http.routers.mqtt-ws.rule=Host(`mqtt.rotsvtiap02`)"
+      - "traefik.http.routers.mqtt-ws.service=mqtt-ws"
+      
+      # Service - porta WebSocket interna
+      - "traefik.http.services.mqtt-ws.loadbalancer.server.port=9001"
+      
+      # Network da usare
+      - "traefik.docker.network=proxy"
+    security_opt:
+      - no-new-privileges:true
+    user: "1883:1883"  # User mosquitto
+
+networks:
+  # Rete per tutti i servizi backend (DB, MQTT, apps)
+  backend:
+    external: true  # Creata dal DB stack
+  
+  # Rete Traefik per WebSocket
+  proxy:
+    external: true
+
+volumes:
+  mosquitto-data:
+    driver: local
+  mosquitto-logs:
+    driver: local

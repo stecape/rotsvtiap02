@@ -1,0 +1,11 @@
+# Configurazione per leggere i log di Traefik
+filenames:
+  - /var/log/traefik/*.log
+labels:
+  type: traefik
+---
+# Log di accesso Traefik
+filenames:
+  - /var/log/traefik/access.log
+labels:
+  type: traefik

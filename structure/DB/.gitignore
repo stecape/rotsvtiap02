@@ -1,0 +1,9 @@
+# Environment file con credenziali
+.env
+
+# Cartelle di dati locali
+init-scripts/
+backups/
+
+# Log
+*.log

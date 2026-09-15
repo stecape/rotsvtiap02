@@ -1,0 +1,23 @@
+# =============================================
+# External Services - Servizi fuori da Docker
+# =============================================
+# Definisce routing verso servizi su altri host
+
+http:
+  routers:
+    # Applicazione generica su host esterno
+    app:
+      rule: "Host(`app.rotsvtiap02`)"
+      entrypoints:
+        - http
+      service: app-service
+      middlewares:
+        - security-headers
+
+  services:
+    # Servizio app esterno
+    app-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.2.100:8080"  # ← Cambia con IP:porta reali
+        passHostHeader: true

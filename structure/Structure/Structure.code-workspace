@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../DB"
+		},
+		{
+			"path": "../MQTT"
+		}
+	],
+	"settings": {}
+}

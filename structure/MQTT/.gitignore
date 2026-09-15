@@ -1,0 +1,11 @@
+# Environment file con credenziali
+.env
+
+# Password file
+config/passwd
+
+# Log files
+*.log
+
+# Data directory
+data/

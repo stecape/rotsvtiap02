@@ -1,0 +1,4 @@
+.env
+acme.json
+*.log
+sites/*/data

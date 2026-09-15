@@ -1,0 +1,48 @@
+# Middlewares personalizzati per Traefik
+# Questi middleware possono essere referenziati dai servizi
+
+http:
+  middlewares:
+    # Sicurezza headers
+    security-headers:
+      headers:
+        customResponseHeaders:
+          server: ""
+          X-Powered-By: ""
+        referrerPolicy: "same-origin"
+        hostsProxyHeaders:
+          - "X-Forwarded-Host"
+        contentTypeNosniff: true
+        browserXssFilter: true
+
+    # Rate limiting
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1m
+
+    # Rate limiting per autenticazioni
+    rate-limit-auth:
+      rateLimit:
+        average: 10
+        burst: 5
+        period: 1m
+
+    # Compressione
+    compress:
+      compress: {}
+
+    # CORS
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+          - POST
+          - DELETE
+        accessControlAllowOriginList:
+          - "*"
+        accessControlMaxAge: 100
+        addVaryHeader: true

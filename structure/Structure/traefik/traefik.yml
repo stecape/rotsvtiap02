@@ -1,0 +1,32 @@
+api:
+  dashboard: true
+  insecure: true  # Abilita API su porta 8080 (esposta sull'host come 8090)
+  debug: true
+
+entryPoints:
+  http:
+    address: ":80"
+  https:
+    address: ":8443"  # Riservato per HTTPS self-signed (futuro)
+
+serversTransport:
+  insecureSkipVerify: true
+  forwardingTimeouts:
+    dialTimeout: 30s
+    responseHeaderTimeout: 300s
+    idleConnTimeout: 300s
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+  file:
+    directory: /config
+    watch: true
+
+log:
+  level: DEBUG
+
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  bufferingSize: 100
