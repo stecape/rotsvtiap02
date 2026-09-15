@@ -185,3 +185,27 @@ docker exec RAG curl -s -X POST http://localhost:3000/api/ingest
 
 L'app è raggiungibile su `http://wiki.rotsvtiap02` tramite le label nel `docker-compose.yml`.
 Per HTTPS, aggiungere le label `traefik.http.routers.wiki-rag-secure` con entrypoint `https` e `tls: true`.
+
+### Come si risolve `wiki.rotsvtiap02` (setup reale, non DNS)
+
+`rotsvtiap02` è il nome della macchina host Hyper-V, non un dominio pubblico —
+non c'è alcun DNS/wildcard automatico dietro l'alias. Catena reale:
+
+1. **File `hosts` del client** (`C:\Windows\System32\drivers\etc\hosts`),
+   riga aggiunta manualmente su ogni PC che deve accedere — punta a
+   `10.100.13.20` (IP dell'host `rotsvtiap02` sulla rete client)
+2. **`netsh interface portproxy`** sull'host `rotsvtiap02` inoltra verso la
+   VM `dk-vm` (dove gira anche questo container `RAG`, insieme a tutto lo
+   stack `Structure`)
+3. Solo a quel punto entra in gioco il routing per `Host()` di Traefik
+   descritto sopra — ma **solo se il portproxy punta alla porta 80** di
+   `dk-vm` (dove ascolta `nginx-multiplexer`). Una regola che punta invece
+   direttamente alla porta 3000 (come oggi accade per `:8080`) bypassa
+   Traefik e tutto il layer di sicurezza (CrowdSec, `security-headers`).
+
+Dettagli completi, inclusa una regola `:80` attualmente stale, in
+[`structure/Structure/README.md`](../structure/Structure/README.md#-risoluzione-nomi--port-forward-setup-reale-in-uso).
+
+Nessun HTTPS è realmente attivo oggi: tutti i router Traefik (`wiki-rag`
+incluso) usano `entrypoints=http`; l'entrypoint `https` è riservato ma non
+configurato con alcun certificate resolver.

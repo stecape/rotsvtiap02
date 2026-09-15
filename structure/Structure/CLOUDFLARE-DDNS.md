@@ -1,5 +1,14 @@
 # Cloudflare DDNS - Dynamic DNS Updater
 
+> ⚠️ **Non attivo nel setup corrente.** Il container `cloudflare-ddns` non
+> risulta in esecuzione (`docker ps` reale non lo elenca) e `rotsvtiap02` è
+> un nome a singola etichetta che Cloudflare non può gestire come zona DNS
+> pubblica. La risoluzione oggi è locale: file `hosts` sul client + `netsh
+> portproxy` sull'host `rotsvtiap02`. Vedi
+> [`README.md`](README.md#-risoluzione-nomi--port-forward-setup-reale-in-uso)
+> per il quadro reale. Questo documento resta come riferimento per
+> un'eventuale futura migrazione a dominio pubblico.
+
 Container per aggiornare automaticamente l'IP pubblico su Cloudflare quando cambia (IP dinamico).
 
 ## 🎯 Funzionamento

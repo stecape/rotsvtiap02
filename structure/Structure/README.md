@@ -2,6 +2,15 @@
 
 Infrastruttura modulare per reverse proxy, SSL/TLS automatico con **multiplexing SSH+HTTPS su porta 443**.
 
+> ⚠️ **Stato reale vs questo documento**: il diagramma e le sezioni DNS/SSL
+> qui sotto descrivono l'architettura *pianificata* (dominio pubblico via
+> Cloudflare, HTTPS ovunque). Nel deployment attuale non c'è HTTPS attivo
+> (tutti i router Traefik sono `entrypoints=http`, nessun certResolver in
+> `traefik.yml`) e la risoluzione di `*.rotsvtiap02` è locale (file `hosts`
+> del client + `netsh portproxy`), non DNS Cloudflare. Vedi la sezione
+> [🧭 Risoluzione Nomi & Port-Forward](#-risoluzione-nomi--port-forward-setup-reale-in-uso)
+> per il quadro verificato.
+
 ## 🎯 Architettura
 
 ```
@@ -136,12 +145,96 @@ docker-compose logs -f traefik
 
 ## 🌐 Accesso ai Servizi
 
-Dopo l'avvio, i servizi saranno accessibili su:
+Dopo l'avvio, i servizi *pianificati* sarebbero accessibili su (vedi ⚠️ sopra: oggi solo HTTP, e serve una riga in `hosts` sul client per ogni alias):
 
-- **Dashboard Traefik**: https://traefik.rotsvtiap02:8080
-- **Sito principale**: https://www.rotsvtiap02
-- **Blog**: https://blog.rotsvtiap02
-- **API**: https://api.rotsvtiap02
+- **Dashboard Traefik**: http://IP-VM:8090 (porta pubblicata direttamente, non via Traefik/hostname)
+- **Sito principale**: http://www.rotsvtiap02
+- **Blog**: http://blog.rotsvtiap02
+- **API**: http://api.rotsvtiap02
+
+Servizi realmente configurati oggi nei vari stack: `wiki.rotsvtiap02` (RAG),
+`pgadmin.rotsvtiap02` (DB), `mqtt.rotsvtiap02` (MQTT), `app.rotsvtiap02`
+(external-services di esempio).
+
+## 🧭 Risoluzione Nomi & Port-Forward (setup reale in uso)
+
+> ⚠️ Le sezioni "Configura DNS su Cloudflare" e "Wildcard SSL" sopra descrivono
+> un setup con dominio pubblico che **non è quello attualmente in uso**.
+> `rotsvtiap02` è un nome a singola etichetta (stile hostname Windows), non
+> un dominio pubblico: Cloudflare non può ospitarne la zona. La risoluzione
+> reale è interamente locale, come descritto qui sotto.
+
+### Topologia reale
+
+Un solo host fisico/Hyper-V, nome macchina **`rotsvtiap02`**, esegue le VM
+guest. **Tutti** i container (stack `Structure` + stack `RAG`, incluso
+`ollama`, `mosquitto`, `postgres`, `pgadmin`, ecc.) girano insieme su
+un'**unica VM guest**, `dk-vm`, oggi all'IP `192.168.50.10` sulla rete
+interna dell'host.
+
+### Catena di risoluzione (verificata)
+
+```
+Browser (PC Windows)
+   │
+   │  wiki.rotsvtiap02  (nome a due etichette, non risolvibile via
+   │                     NetBIOS/LLMNR — serve una regola esplicita)
+   ▼
+File hosts LOCALE del PC (C:\Windows\System32\drivers\etc\hosts)
+   │  — regola presente SOLO sui PC dove è stata aggiunta a mano,
+   │    non è DNS, non è condivisa automaticamente —
+   │
+   │  10.100.13.20  wiki.rotsvtiap02
+   │  10.100.13.20  pgadmin.rotsvtiap02
+   │  10.100.13.20  app.rotsvtiap02
+   │  10.100.13.20  mqtt.rotsvtiap02
+   ▼
+10.100.13.20  (host Hyper-V "rotsvtiap02", NIC verso la rete client)
+   │
+   │  netsh interface portproxy (eseguito sull'host rotsvtiap02)
+   ▼
+dk-vm (192.168.50.10) — porta di destinazione dipende dalla regola:
+   │
+   ├─ :8080 → dk-vm:3000  ✅ attiva, ma bypassa nginx + Traefik
+   │          (va dritta nel container RAG, nessun routing per Host,
+   │           nessun middleware security-headers, nessun CrowdSec)
+   │
+   └─ :80   → 192.168.20.50:3000  ⚠️ STALE — IP non più valido per dk-vm
+              (dovrebbe puntare a dk-vm:80, dove ascolta
+              nginx-multiplexer → Traefik → routing per Host header)
+```
+
+**Implicazione pratica**: oggi solo `wiki.rotsvtiap02:8080` funziona in modo
+affidabile, e lo fa scavalcando tutto il livello di sicurezza/routing
+(nginx, Traefik, CrowdSec, middleware `security-headers`). Gli altri alias
+(`pgadmin.rotsvtiap02`, `app.rotsvtiap02`, `mqtt.rotsvtiap02`) risolvono
+verso lo stesso `10.100.13.20`, ma senza `:8080` (o un'analoga regola di
+forward dedicata) dipendono anch'essi dalla regola `:80` stale e
+probabilmente non sono raggiungibili dall'esterno della VM in questo
+momento.
+
+### Fix consigliato
+
+Sull'host Hyper-V `rotsvtiap02` (PowerShell da amministratore):
+
+```powershell
+netsh interface portproxy delete v4tov4 listenport=80 listenaddress=0.0.0.0
+netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectaddress=192.168.50.10 connectport=80
+```
+
+Questo ripristina il routing corretto `:80 → nginx → Traefik → Host()` per
+**tutti** i servizi (non solo `wiki-rag`), con middleware e bouncer CrowdSec
+applicati. La regola `:8080 → dk-vm:3000` può restare come scorciatoia di
+debug diretta sull'app, ma va tenuta presente che bypassa la sicurezza a
+livello Traefik.
+
+### Nota per aggiungere un nuovo alias
+
+Un nuovo hostname `*.rotsvtiap02` richiede **due** modifiche, non una sola:
+1. Label Traefik `Host(\`nomealias.rotsvtiap02\`)` sul nuovo servizio (vedi sezione successiva)
+2. Una riga nel file `hosts` di ogni client che deve raggiungerlo, puntata
+   a `10.100.13.20` (o l'IP attuale della NIC "esterna" dell'host
+   `rotsvtiap02`) — non esiste un DNS/wildcard automatico che lo faccia.
 
 ## 📝 Aggiungere Nuovi Servizi
 

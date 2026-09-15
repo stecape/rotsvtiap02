@@ -7,7 +7,7 @@ Broker MQTT con supporto WebSocket, integrato con Traefik per SSL e reverse prox
 ### Mosquitto MQTT Broker
 - **Versione**: Eclipse Mosquitto (latest)
 - **MQTT Standard**: Porta 1883 (TCP) esposta direttamente
-- **MQTT WebSocket**: wss://mqtt.rotsvtiap02 via Traefik (porta interna 9001)
+- **MQTT WebSocket**: ws://mqtt.rotsvtiap02 via Traefik (porta interna 9001)
 - **Persistenza**: Volume persistente `mosquitto-data`
 
 ## 📡 Modalità di Accesso
@@ -23,7 +23,7 @@ Protocol: MQTT
 ### 2. MQTT WebSocket (WSS)
 Per browser e applicazioni web:
 ```
-URL: wss://mqtt.rotsvtiap02
+URL: ws://mqtt.rotsvtiap02
 Protocol: WebSocket
 ```
 
@@ -67,7 +67,7 @@ const mqtt = require('mqtt');
 const client = mqtt.connect('mqtt://mqtt.rotsvtiap02:1883');
 
 // MQTT WebSocket
-const clientWS = mqtt.connect('wss://mqtt.rotsvtiap02');
+const clientWS = mqtt.connect('ws://mqtt.rotsvtiap02');
 
 client.on('connect', () => {
   console.log('Connected!');
@@ -134,7 +134,7 @@ Rete per backend Docker:
 
 ### `proxy` (esterna)
 Rete Traefik per WebSocket:
-- Espone WebSocket su wss://mqtt.rotsvtiap02
+- Espone WebSocket su ws://mqtt.rotsvtiap02
 
 ## 🔒 Sicurezza
 
@@ -234,18 +234,28 @@ mosquitto_sub -h mqtt.rotsvtiap02 -p 1883 -t \$SYS/broker/clients/connected
 
 Questo stack si integra con l'infrastruttura Traefik in `C:\Structure`:
 - Usa la rete `proxy` condivisa
-- WebSocket esposto via HTTPS con certificato SSL automatico
-- MQTT standard (porta 1883) bypassare Traefik (TCP diretto)
+- Router su `entrypoints=http` — WebSocket è oggi `ws://`, non `wss://`:
+  nessun HTTPS/certificato è configurato (vedi
+  [`traefik.yml`](../Structure/traefik/traefik.yml), entrypoint `https`
+  riservato ma senza certResolver)
+- MQTT standard (porta 1883) bypassa Traefik (TCP diretto)
+- `mqtt.rotsvtiap02` non è DNS pubblico: risolve solo dove esiste una riga
+  nel file `hosts` del client, vedi
+  [`structure/Structure/README.md`](../Structure/README.md#-risoluzione-nomi--port-forward-setup-reale-in-uso)
 
 ## 🔧 Troubleshooting
 
 ### WebSocket non connette
 - Verifica che Traefik sia attivo: `docker ps | grep traefik`
-- Controlla DNS per `mqtt.rotsvtiap02`
+- Verifica che il file `hosts` del client abbia la riga
+  `<IP-host-rotsvtiap02>  mqtt.rotsvtiap02` (non è DNS)
+- Verifica la regola `netsh portproxy` sull'host `rotsvtiap02` per la porta
+  usata (oggi solo `:8080` risulta affidabile, `:80` punta a un IP stale)
 - Verifica log Mosquitto: `docker-compose logs -f`
 
 ### MQTT standard non connette
 - Verifica porta 1883 aperta: `Test-NetConnection mqtt.rotsvtiap02 -Port 1883`
+  (richiede comunque la riga in `hosts` sopra)
 - Controlla firewall Windows
 
 ### Backend Docker non si connette

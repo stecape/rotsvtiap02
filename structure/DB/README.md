@@ -11,10 +11,15 @@ Stack di database PostgreSQL con interfaccia web PGAdmin, integrato con Traefik 
 - **Storage**: Volume persistente `postgres-data`
 
 ### PGAdmin
-- **Accessibilità**: Esterno via HTTPS tramite Traefik
-- **URL**: https://pgadmin.rotsvtiap02
+- **Accessibilità**: Esterno via Traefik
+- **URL**: http://pgadmin.rotsvtiap02 (⚠️ HTTP, non HTTPS: il router Traefik
+  usa `entrypoints=http`, nessun certificate resolver è configurato oggi —
+  vedi [`traefik.yml`](../Structure/traefik/traefik.yml))
 - **Porta interna**: 80 (NON esposta direttamente)
 - **Storage**: Volume persistente `pgadmin-data`
+- **Risoluzione nome**: `pgadmin.rotsvtiap02` non è DNS pubblico — richiede
+  una riga nel file `hosts` del client, vedi
+  [`structure/Structure/README.md`](../Structure/README.md#-risoluzione-nomi--port-forward-setup-reale-in-uso)
 
 ## 📡 Reti Docker
 
@@ -51,7 +56,7 @@ docker-compose logs -f
 ```
 
 ### 3. Accesso PGAdmin
-1. Vai su https://pgadmin.rotsvtiap02
+1. Vai su http://pgadmin.rotsvtiap02 (richiede riga in `hosts` sul client, vedi sopra)
 2. Login con credenziali da `.env`:
    - Email: `PGADMIN_EMAIL`
    - Password: `PGADMIN_PASSWORD`
@@ -170,9 +175,13 @@ docker-compose ps
 - Usa `postgres` come hostname (non `localhost` o IP)
 - Verifica credenziali nel file `.env`
 
-### Certificato SSL non funziona
+### PGAdmin non risponde su `pgadmin.rotsvtiap02`
 - Controlla che Traefik sia attivo: `docker ps | grep traefik`
-- Verifica DNS Cloudflare per `pgadmin.rotsvtiap02`
+- Verifica che il file `hosts` del client abbia la riga
+  `<IP-host-rotsvtiap02>  pgadmin.rotsvtiap02` (non è DNS, vedi
+  [`structure/Structure/README.md`](../Structure/README.md#-risoluzione-nomi--port-forward-setup-reale-in-uso))
+- Verifica la regola `netsh portproxy` sull'host `rotsvtiap02` per la porta
+  usata (oggi solo `:8080` risulta affidabile, `:80` punta a un IP stale)
 - Controlla log Traefik: `docker logs traefik`
 
 ### Errori di permessi sui volumi
@@ -187,7 +196,9 @@ docker-compose up -d
 
 Questo stack si integra con l'infrastruttura Traefik in `C:\Structure`:
 - Usa la rete `proxy` condivisa
-- Certificato SSL via DNS Challenge Cloudflare
-- Middleware di sicurezza da `middlewares.yml`
+- Router su `entrypoints=http` — nessun HTTPS/certificato attivo oggi
+  (la sezione "DNS Challenge Cloudflare" nella documentazione di
+  `Structure` descrive un setup pianificato, non quello attualmente in uso)
+- Middleware di sicurezza (`security-headers`, `rate-limit`) da file config
 
 Assicurati che Traefik sia attivo prima di avviare questo stack.

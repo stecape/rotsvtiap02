@@ -1,5 +1,18 @@
 # ✅ Checklist Setup Architettura Ibrida
 
+> ⚠️ **Non è il setup attualmente in uso.** Questa checklist presuppone un
+> dominio pubblico gestito da Cloudflare — ma `rotsvtiap02` è un nome a
+> singola etichetta (hostname stile Windows/Hyper-V), che Cloudflare non può
+> ospitare come zona DNS. Il container `cloudflare-ddns` descritto qui non
+> risulta in esecuzione (`docker ps` reale non lo elenca), e `traefik.yml`
+> non ha alcun `certificatesResolvers` configurato (`insecure: true`,
+> nessun ACME). La risoluzione e il routing **effettivamente attivi** oggi
+> sono interamente locali: file `hosts` del client + `netsh portproxy`
+> sull'host `rotsvtiap02` + Traefik solo su HTTP. Vedi
+> [`README.md`](README.md#-risoluzione-nomi--port-forward-setup-reale-in-uso)
+> per il quadro reale. Questo file resta come riferimento se in futuro si
+> vorrà migrare a un dominio pubblico.
+
 ## 📋 Pre-requisiti
 
 - [ ] Docker e Docker Compose installati
